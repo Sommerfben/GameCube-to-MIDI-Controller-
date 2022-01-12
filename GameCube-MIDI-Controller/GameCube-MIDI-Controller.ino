@@ -1,73 +1,41 @@
-/*
-
-Demonstrates simple RX and TX operation.
-Any of the Basic_RX examples can be used as a receiver.
-Please read through 'NRFLite.h' for a description of all the methods available in the library.
-
-Radio    Arduino
-CE    -> 9
-CSN   -> 10 (Hardware SPI SS)
-MOSI  -> 11 (Hardware SPI MOSI)
-MISO  -> 12 (Hardware SPI MISO)
-SCK   -> 13 (Hardware SPI SCK)
-IRQ   -> No connection
-VCC   -> No more than 3.6 volts
-GND   -> GND
-
-*/
-
-#include <SPI.h>
 #include "Nintendo.h"
 #include "MIDIUSB.h"
 #include "PitchToNote.h"
 
 #define NUM_BUTTONS  12
 
-// Define a Gamecube Controller
+const bool SHOULDER_AS_INTESITY = true; //Change to false if you dont want the note intensity to be controlled by the right shoulder trigger
+
+// Define a Gamecube Controller with data line connected to D2 on arduino
 CGamecubeController GamecubeController(2);
 
 // Generally, you should use "unsigned long" for variables that hold time
 // The value will quickly become too large for an int to store
 unsigned long previousMillis = 0;        // will store last time controller report was printed
-
-// constants won't change:
 const long interval = 1000;           // interval at which to print controller report (milliseconds)
 
-const uint8_t button1 = 2;
+const uint8_t button1;
+const uint8_t button2;
+const uint8_t button3;
+const uint8_t button4;
+const uint8_t button5;
+const uint8_t button6;
+const uint8_t button7;
+const uint8_t button8;
+const uint8_t button9;
+const uint8_t button10;
+const uint8_t button11;
+const uint8_t button12;
 
-const uint8_t button2 = 3;
-
-const uint8_t button3 = 4;
-
-const uint8_t button4 = 9;
-
-const uint8_t button5 = 6;
-
-const uint8_t button6 = 7;
-
-const uint8_t button7 = 8;
-
-const uint8_t button8 = 9;
-
-const uint8_t button9 = 10;
-
-const uint8_t button10 = 11;
-
-const uint8_t button11 = 12;
-
-const uint8_t button12 = 13;
-
-const int intensityPot = 0;  //A0 input
-
-const uint8_t buttons[NUM_BUTTONS] = {button1, button2, button3, button4, button5, button6, button7,button8,button9,button10,button11,button12};
-
-const byte notePitches[NUM_BUTTONS] = {C3, D3, E3,F3, G3, A3, B3,C4,D4,E4,F4,G4};
+const uint8_t buttons[NUM_BUTTONS] = {button1, button2, button3, button4, button5, button6, button7, button8, button9, button10, button11, button12};
+ 
+const byte notePitches[NUM_BUTTONS] = {C3, D3, E3, F3, G3, A3, B3, C4, D4, E4, F4, G4};
 
 uint8_t notesTime[NUM_BUTTONS];
 
-uint32_t pressedButtons = 0x000;
+uint32_t pressedButtons = 0x00;
 
-uint32_t previousButtons = 0x000;
+uint32_t previousButtons = 0x00;
 
 uint8_t intensity;
 uint8_t val_right;
@@ -85,7 +53,7 @@ void setup()
 
 void loop()
 {
-    // Try to read the controller data
+  // Try to read the controller data
   if (GamecubeController.read())
   {
     // Print Controller information
@@ -93,26 +61,30 @@ void loop()
     auto report = GamecubeController.getReport();
     unsigned long currentMillis = millis();
 
+    //Read the controller report for the digital buttons and translate them into MIDI notes
     readButtons(report);
 
+    //Read the controller report for the analog inputs and translate it into a MIDI control surface
     readIntensity(report);
 
+    //Send the notes over USB
     playNotes();
 
-  if (currentMillis - previousMillis >= interval) {
-    // save the last time you blinked the LED
-    previousMillis = currentMillis;
-    print_gc_report(report, status);
-  }
+    //If it has been > interval milliseconds since the controller report was printed to serial, then do so  
+    if (currentMillis - previousMillis >= interval) {
+      // save the last time report was printed
+      previousMillis = currentMillis;
+      print_gc_report(report, status);
+    }
     
   }
   else
   {
     // Add debounce if reading failed
     Serial.println(F("Error reading Gamecube controller."));
-    delay(1000);
+    delay(interval);
   }
-  delay(20);
+  delay(10); // delay a little bit so we dont flood the midi interface 
 }
 
 
@@ -193,7 +165,7 @@ void print_gc_report(Gamecube_Report_t &gc_report, Gamecube_Status_t &gc_status)
 
 }
 
-
+//Reads the gamecube controller report and translates into MIDI notes
 void readButtons(Gamecube_Report_t &gc_report)
 {
     if (gc_report.a == 1)
@@ -286,96 +258,75 @@ void readButtons(Gamecube_Report_t &gc_report)
     
 }
 
-
+//Reads gamecube analog values (joysticks + L/R) and translates them into MIDI control surfaces 
 void readIntensity(Gamecube_Report_t &gc_report)
 {
   uint8_t temp;
-  temp = map(gc_report.xAxis, 0, 256, 0, 127);
-  if(temp != val_x){
+  temp = map(gc_report.xAxis, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
+  if(temp != val_x){ //Checks to see if its different and only updates if it is
      val_x = temp;
-     updateControlSurfaces(); 
+     controlChange(0, 0, val_x);
   }
 
-  temp = map(gc_report.yAxis, 0, 256, 0, 127);
-    if(temp != val_y){
+  temp = map(gc_report.yAxis, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
+    if(temp != val_y){ //Checks to see if its different and only updates if it is
      val_y = temp;
-     updateControlSurfaces(); 
+     controlChange(0, 1, val_y);
   }
 
-  temp = map(gc_report.cxAxis, 0, 256, 0, 127);
-  if(temp != val_cx){
+  temp = map(gc_report.cxAxis, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
+  if(temp != val_cx){ //Checks to see if its different and only updates if it is
    val_cx = temp;
-   updateControlSurfaces(); 
+   controlChange(0, 2, val_cx);
   }
 
-  temp = map(gc_report.cyAxis, 0, 256, 0, 127);
-  if(temp != val_cy){
+  temp = map(gc_report.cyAxis, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
+  if(temp != val_cy){ //Checks to see if its different and only updates if it is
    val_cy = temp;
-   updateControlSurfaces(); 
+   controlChange(0, 3, val_cy);
   }
 
-  temp = map(gc_report.right, 0, 256, 0, 127);
-  if(temp != val_right){
+  temp = map(gc_report.right, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
+  if(temp != val_right){ //Checks to see if its different and only updates if it is
    val_right = temp;
-   updateControlSurfaces(); 
-  }
-
-  temp = map(gc_report.left, 0, 256, 0, 127);
-  if(temp != val_left){
-   val_left = temp;
-   updateControlSurfaces(); 
-  }
-
-  intensity = 126 - val_right;
-  
-}
-
-void updateControlSurfaces(){
-  controlChange(0, 0, val_x);
-  controlChange(0, 1, val_y);
-  controlChange(0, 2, val_cx);
-  controlChange(0, 3, val_cy);
   controlChange(0, 4, val_right);
-  controlChange(0, 5, val_left);
+  }
+
+  temp = map(gc_report.left, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
+  if(temp != val_left){ //Checks to see if its different and only updates if it is
+   val_left = temp;
+   controlChange(0, 5, val_left);
+  }
+
+  if(SHOULDER_AS_INTESITY == true){
+    intensity = 126 - val_right; //Sets the intensity for the digital notes to the right shoulder trigger
+  }
+  else{
+    intensity = 67;
+  }
+  
+  
 }
 
 void playNotes()
 {
-
   for (int i = 0; i < NUM_BUTTONS; i++)
-
   {
-
     if (bitRead(pressedButtons, i) != bitRead(previousButtons, i))
-
     {
-
       if (bitRead(pressedButtons, i))
-
       {
-
         bitWrite(previousButtons, i , 1);
-
         noteOn(0, notePitches[i], intensity);
-
         MidiUSB.flush();
-
       }
-
       else
-
       {
-
         bitWrite(previousButtons, i , 0);
-
         noteOff(0, notePitches[i], 0);
-
         MidiUSB.flush();
-
       }
-
     }
-
   }
 }
 
