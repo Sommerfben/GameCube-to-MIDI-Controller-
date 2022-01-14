@@ -4,33 +4,44 @@
 
 #define NUM_BUTTONS  12
 
+//USER CONFIGURABLE VALUES
 const bool SHOULDER_AS_INTESITY = true; //Change to false if you dont want the note intensity to be controlled by the right shoulder trigger
 
+const uint8_t button1; //A
+const uint8_t button2; //B
+const uint8_t button3; //X
+const uint8_t button4; //Y
+const uint8_t button5; //Start
+const uint8_t button6; //D-pad up
+const uint8_t button7; //D-pad down
+const uint8_t button8; //D-pad left
+const uint8_t button9; //D-pad right
+const uint8_t button10; //Z
+const uint8_t button11; //L
+const uint8_t button12; //R
+//                                     A   B   X   Y   S   Dup Ddo Dl  Dr  Z   L   R
+const byte notePitches[NUM_BUTTONS] = {C3, D3, E3, F3, G3, A3, B3, C4, D4, E4, F4, G4}; //Pitches sent by each button
+
+const uint8_t control0 = 0; //xAxis mapped to control surface0 (change the 0 after the = to change the surface number) 
+const uint8_t control1 = 1; //yAxis mapped to control surface1 (change the 1 after the = to change the surface number) 
+const uint8_t control2 = 2; //cxAxis mapped to control surface2 (change the 2 after the = to change the surface number) 
+const uint8_t control3 = 3; //cyAxis mapped to control surface3 (change the 3 after the = to change the surface number) 
+const uint8_t control4 = 4; //right slider mapped to control surface4 (change the 4 after the = to change the surface number) 
+const uint8_t control5 = 5; //left slider mapped to control surface5 (change the 5 after the = to change the surface number) 
+
+
+
+//DONT CHANGE THESE UNLESS YOU KNOW WHAT YOU'RE DOING. THE CODE WILL STOP WORKING IF YOU DO IT WRONG
 // Define a Gamecube Controller with data line connected to D2 on arduino
 CGamecubeController GamecubeController(2);
 
+const uint8_t buttons[NUM_BUTTONS] = {button1, button2, button3, button4, button5, button6, button7, button8, button9, button10, button11, button12};
+
 // Generally, you should use "unsigned long" for variables that hold time
 // The value will quickly become too large for an int to store
+
 unsigned long previousMillis = 0;        // will store last time controller report was printed
 const long interval = 1000;           // interval at which to print controller report (milliseconds)
-
-const uint8_t button1;
-const uint8_t button2;
-const uint8_t button3;
-const uint8_t button4;
-const uint8_t button5;
-const uint8_t button6;
-const uint8_t button7;
-const uint8_t button8;
-const uint8_t button9;
-const uint8_t button10;
-const uint8_t button11;
-const uint8_t button12;
-
-const uint8_t buttons[NUM_BUTTONS] = {button1, button2, button3, button4, button5, button6, button7, button8, button9, button10, button11, button12};
- 
-const byte notePitches[NUM_BUTTONS] = {C3, D3, E3, F3, G3, A3, B3, C4, D4, E4, F4, G4};
-
 uint8_t notesTime[NUM_BUTTONS];
 
 uint32_t pressedButtons = 0x00;
@@ -265,37 +276,37 @@ void readIntensity(Gamecube_Report_t &gc_report)
   temp = map(gc_report.xAxis, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
   if(temp != val_x){ //Checks to see if its different and only updates if it is
      val_x = temp;
-     controlChange(0, 0, val_x);
+     controlChange(0, control0, val_x);
   }
 
   temp = map(gc_report.yAxis, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
     if(temp != val_y){ //Checks to see if its different and only updates if it is
      val_y = temp;
-     controlChange(0, 1, val_y);
+     controlChange(0, control1, val_y);
   }
 
   temp = map(gc_report.cxAxis, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
   if(temp != val_cx){ //Checks to see if its different and only updates if it is
    val_cx = temp;
-   controlChange(0, 2, val_cx);
+   controlChange(0, control2, val_cx);
   }
 
   temp = map(gc_report.cyAxis, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
   if(temp != val_cy){ //Checks to see if its different and only updates if it is
    val_cy = temp;
-   controlChange(0, 3, val_cy);
+   controlChange(0, control3, val_cy);
   }
 
   temp = map(gc_report.right, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
   if(temp != val_right){ //Checks to see if its different and only updates if it is
    val_right = temp;
-  controlChange(0, 4, val_right);
+  controlChange(0, control4, val_right);
   }
 
   temp = map(gc_report.left, 0, 256, 0, 127); //takes the value and maps it to a range of 0-127 for MIDI
   if(temp != val_left){ //Checks to see if its different and only updates if it is
    val_left = temp;
-   controlChange(0, 5, val_left);
+   controlChange(0, control5, val_left);
   }
 
   if(SHOULDER_AS_INTESITY == true){
